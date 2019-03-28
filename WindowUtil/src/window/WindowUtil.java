@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
+import java.util.function.Function;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HWND;
@@ -31,8 +32,9 @@ public class WindowUtil
 		try (FileInputStream fis = new FileInputStream("windowUtil.config"))
 		{
 			properties.load(fis);
-			properties.computeIfPresent("title-search-length", (a, b) -> Math.min(1 << 16,
-				Math.max(1, Integer.parseInt(((String)b).replaceAll("//.*", "")))));
+			properties.computeIfPresent("title-search-length",
+				(a, b) -> Math.min(1 << 16, Math.max(1, readProperty(
+					WindowUtil.cleanComments().andThen(Integer::parseInt), b))));
 		}
 		catch (NumberFormatException | IOException e)
 		{
@@ -41,6 +43,23 @@ public class WindowUtil
 				"Library WindowUtil Failed to load resources: Check that config settings are correct");
 		}
 		TITLE_SEARCH_LENGTH = (int)properties.getOrDefault("title-search-length", 256);
+	}
+	
+	/**
+	 * @return A function which cleans comments from configuration file properties
+	 */
+	private static Function<String, String> cleanComments()
+	{
+		return (property) -> property.replaceAll("//.*", "");
+	}
+	
+	/**
+	 * reads a property of type R from {@code property} using conversion function
+	 * {@code converter}
+	 */
+	private static <R> R readProperty(Function<String, R> converter, Object property)
+	{
+		return converter.apply(((String)property));
 	}
 	
 	/**
