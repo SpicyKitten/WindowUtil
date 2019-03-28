@@ -1,10 +1,7 @@
 package window;
 
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
@@ -21,29 +18,34 @@ public class WindowUtil
 		System.out.println(properties);
 		System.out.println(properties.getProperty("title-search-length"));
 		System.out.println(properties.get("title-search-length"));
+		getWindows("Ecli", SearchType.CONTAINS);
 	}
 	
 	/**
 	 * How many characters to search in any window title
 	 */
-	private static final int TITLE_SEARCH_LENGTH = 256;
-	private static final Properties properties;
+	private static final int TITLE_SEARCH_LENGTH;
+	private static final Properties properties = new Properties();
 	static
 	{
-		properties = new Properties();
-		File f = new File("windowUtil.config");
-		try (FileInputStream fis = new FileInputStream(f))
+		try (FileInputStream fis = new FileInputStream("windowUtil.config"))
 		{
 			properties.load(fis);
 			properties.computeIfPresent("title-search-length",
-				(a, b) -> Integer.parseInt((String)b));
+				(a, b) -> Math.min(1 << 16, Math.max(1, Integer.parseInt(((String)b).replaceAll("//.*", "")))));
 		}
-		catch (IOException e1)
+		catch (NumberFormatException | IOException e)
 		{
-			e1.printStackTrace();
-			System.err.println("Library WindowUtil Failed to load resources");
-			System.exit(0);
+			e.printStackTrace();
+			System.err.println(
+				"Library WindowUtil Failed to load resources: Check that config settings are correct");
 		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
+		TITLE_SEARCH_LENGTH = (int)properties.getOrDefault("title-search-length", 256);
 	}
 	
 	/**
@@ -61,10 +63,14 @@ public class WindowUtil
 		ArrayList<HWND> handles = new ArrayList<>();
 		User32.INSTANCE.EnumWindows((HWND, Pointer) ->
 		{
-			
+			char[] titleChars = new char[TITLE_SEARCH_LENGTH+1];
+			User32.INSTANCE.GetWindowText(HWND, titleChars, TITLE_SEARCH_LENGTH+1);
+			String title = new String(titleChars);
+			if(matchesSearch(title, query, search))
+				handles.add(HWND);
 			return true;
 		}, (Pointer)null);
-		return null;
+		return handles;
 	}
 	
 	private static boolean matchesSearch(String title, String query, SearchType search)
