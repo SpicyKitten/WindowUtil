@@ -24,26 +24,21 @@ public class WindowUtil
 	/**
 	 * How many characters to search in any window title
 	 */
-	private static final int TITLE_SEARCH_LENGTH;
+	public static final int TITLE_SEARCH_LENGTH;
 	private static final Properties properties = new Properties();
 	static
 	{
 		try (FileInputStream fis = new FileInputStream("windowUtil.config"))
 		{
 			properties.load(fis);
-			properties.computeIfPresent("title-search-length",
-				(a, b) -> Math.min(1 << 16, Math.max(1, Integer.parseInt(((String)b).replaceAll("//.*", "")))));
+			properties.computeIfPresent("title-search-length", (a, b) -> Math.min(1 << 16,
+				Math.max(1, Integer.parseInt(((String)b).replaceAll("//.*", "")))));
 		}
 		catch (NumberFormatException | IOException e)
 		{
 			e.printStackTrace();
 			System.err.println(
 				"Library WindowUtil Failed to load resources: Check that config settings are correct");
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			throw e;
 		}
 		TITLE_SEARCH_LENGTH = (int)properties.getOrDefault("title-search-length", 256);
 	}
@@ -63,10 +58,10 @@ public class WindowUtil
 		ArrayList<HWND> handles = new ArrayList<>();
 		User32.INSTANCE.EnumWindows((HWND, Pointer) ->
 		{
-			char[] titleChars = new char[TITLE_SEARCH_LENGTH+1];
-			User32.INSTANCE.GetWindowText(HWND, titleChars, TITLE_SEARCH_LENGTH+1);
+			char[] titleChars = new char[TITLE_SEARCH_LENGTH + 1];
+			User32.INSTANCE.GetWindowText(HWND, titleChars, TITLE_SEARCH_LENGTH + 1);
 			String title = new String(titleChars);
-			if(matchesSearch(title, query, search))
+			if (matchesSearch(title, query, search))
 				handles.add(HWND);
 			return true;
 		}, (Pointer)null);

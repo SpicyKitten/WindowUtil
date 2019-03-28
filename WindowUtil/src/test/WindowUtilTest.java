@@ -1,15 +1,41 @@
 package test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import java.awt.Color;
+import java.awt.Frame;
 import java.lang.reflect.Method;
+import java.util.Collection;
+import javax.swing.JFrame;
 import org.junit.jupiter.api.Test;
 import window.SearchType;
 import window.WindowUtil;
 
 class WindowUtilTest
 {
+	@Test
+	void testGetWindows()
+	{
+		Frame frame = new JFrame("This is a window with a really long title "
+			+ "and nobody should make another frame with the same title "
+			+ "unless they want this test to maliciously fail");
+		frame.setUndecorated(true);
+		frame.setBackground(new Color(0,0,0,0));
+		frame.setVisible(true);
+		if(WindowUtil.TITLE_SEARCH_LENGTH > frame.getTitle().length()) //we're good
+		{
+			Collection<?> elems = WindowUtil.getWindows(
+				"This is a window with a really long title", SearchType.START);
+			assertNotNull(elems);
+			assertEquals("There should be one window with the given title!",
+				1,elems.size());
+		}
+		frame.setVisible(false);
+	}
 	
+	//@formatter:off
 	@Test
 	void testMatchesSearch() throws Exception
 	{
@@ -48,5 +74,5 @@ class WindowUtilTest
 		assertTrue((boolean)m.invoke(null,"M99009900Search", "M\\d+Search", SearchType.REGEX));
 		assertTrue((boolean)m.invoke(null,"M99009900Search", "M(\\d{0,4})+Search", SearchType.REGEX));
 		assertFalse((boolean)m.invoke(null,"M99009900Search", "M\\D+Search", SearchType.REGEX));
-	}
+	}//@formatter:on
 }
