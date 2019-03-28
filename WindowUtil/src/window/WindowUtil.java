@@ -1,9 +1,10 @@
 package window;
 
+import java.awt.image.BufferedImage;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
 import com.sun.jna.Pointer;
@@ -19,7 +20,8 @@ public class WindowUtil
 		System.out.println(properties);
 		System.out.println(properties.getProperty("title-search-length"));
 		System.out.println(properties.get("title-search-length"));
-		getWindows("Ecli", SearchType.CONTAINS);
+		HWND eclipse = getWindows("workspace", SearchType.START).get(0);
+		capture(eclipse);
 	}
 	
 	/**
@@ -33,8 +35,8 @@ public class WindowUtil
 		{
 			properties.load(fis);
 			properties.computeIfPresent("title-search-length",
-				(a, b) -> Math.min(1 << 16, Math.max(1, readProperty(
-					WindowUtil.cleanComments().andThen(Integer::parseInt), b))));
+				(a, b) -> Math.min(1 << 16, Math.max(1,
+					readProperty(cleanComments().andThen(Integer::parseInt), b))));
 		}
 		catch (NumberFormatException | IOException e)
 		{
@@ -63,30 +65,17 @@ public class WindowUtil
 	}
 	
 	/**
-	 * Find windows, with {@code query} in the first {@code TITLE_SEARCH_LENGTH}
-	 * characters of their title
+	 * Tests window titles for matching to query strings
 	 * 
+	 * @param title
+	 *            The window title to test
 	 * @param query
-	 *            The query string to be searched for
+	 *            The query string being tested against
 	 * @param search
-	 *            The query type on the title strings
-	 * @return All windows matched to the query string and type
+	 *            The match verifier
+	 * @return true if {@code title} satisfies {@code query} according to the
+	 *         {@link SearchType}, else false
 	 */
-	public static Collection<HWND> getWindows(String query, SearchType search)
-	{
-		ArrayList<HWND> handles = new ArrayList<>();
-		User32.INSTANCE.EnumWindows((HWND, Pointer) ->
-		{
-			char[] titleChars = new char[TITLE_SEARCH_LENGTH + 1];
-			User32.INSTANCE.GetWindowText(HWND, titleChars, TITLE_SEARCH_LENGTH + 1);
-			String title = new String(titleChars);
-			if (matchesSearch(title, query, search))
-				handles.add(HWND);
-			return true;
-		}, (Pointer)null);
-		return handles;
-	}
-	
 	private static boolean matchesSearch(String title, String query, SearchType search)
 	{
 		switch (search)
@@ -103,4 +92,44 @@ public class WindowUtil
 				"Search Type provided but not implemented in WindowUtil.matchesSearch!");
 		}
 	}
+	
+	/**
+	 * Find windows, with {@code query} in the first {@code TITLE_SEARCH_LENGTH}
+	 * characters of their title
+	 * 
+	 * @param query
+	 *            The query string to be searched for
+	 * @param search
+	 *            The query type on the title strings
+	 * @return All windows matched to the query string and type
+	 */
+	public static List<HWND> getWindows(String query, SearchType search)
+	{
+		ArrayList<HWND> handles = new ArrayList<>();
+		User32.INSTANCE.EnumWindows((HWND, Pointer) ->
+		{
+			char[] titleChars = new char[TITLE_SEARCH_LENGTH + 1];
+			User32.INSTANCE.GetWindowText(HWND, titleChars, TITLE_SEARCH_LENGTH + 1);
+			String title = new String(titleChars);
+			if (matchesSearch(title, query, search))
+				handles.add(HWND);
+			return true;
+		}, (Pointer)null);
+		return handles;
+	}
+	
+	/**
+	 * Captures an image associated with the given window
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @return The associated window
+	 */
+	public static BufferedImage capture(HWND window)
+	{
+		int width = 1;
+		int height = 1;
+		return new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+	}
+	
 }
