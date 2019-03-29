@@ -1,5 +1,6 @@
 package window;
 
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -8,8 +9,11 @@ import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
 import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.GDI32;
 import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef.HDC;
 import com.sun.jna.platform.win32.WinDef.HWND;
+import com.sun.jna.platform.win32.WinDef.RECT;
 
 public class WindowUtil
 {
@@ -127,9 +131,26 @@ public class WindowUtil
 	 */
 	public static BufferedImage capture(HWND window)
 	{
+		HDC dcWin = User32.INSTANCE.GetDC(window);
+		HDC dcMem = GDI32.INSTANCE.CreateCompatibleDC(dcWin);
+		GDI32.INSTANCE.DeleteDC(dcMem);
+		User32.INSTANCE.ReleaseDC(window, dcWin);
 		int width = 1;
 		int height = 1;
 		return new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+	}
+	
+	/**
+	 * Gets the bounds for a given window
+	 * @param window The handle for the given window
+	 * @return A rectangle containing window bound information
+	 */
+	public static Rectangle getBounds(HWND window)
+	{
+		RECT rect = new RECT();
+		User32.INSTANCE.GetWindowRect(window, rect);
+		return new Rectangle(rect.left, rect.top, 
+			rect.right - rect.left, rect.bottom - rect.top);
 	}
 	
 }
