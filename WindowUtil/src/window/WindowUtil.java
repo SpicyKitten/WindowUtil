@@ -34,29 +34,6 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
  */
 public class WindowUtil
 {
-	public static void main(String[] args)
-	{
-		HWND h = getWindow("workspace", SearchType.EXACT);
-		BufferedImage b = capture(h);
-		var j = new JFrame();
-		System.out.println(b.getWidth() + " " + b.getHeight());
-		j.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		@SuppressWarnings("serial")
-		var label = new JLabel()
-		{
-			public void paintComponent(Graphics g)
-			{
-				super.paintComponent(g);
-				g.drawImage(b, 0, 0, this.getWidth(), this.getHeight(), 0, 0,
-					b.getWidth(), b.getHeight(), null);
-			}
-		};
-		label.setPreferredSize(new Dimension(800, 600));
-		j.add(label);
-		j.pack();
-		j.setVisible(true);
-	}
-	
 	/**
 	 * How many characters to search in any window title
 	 */
