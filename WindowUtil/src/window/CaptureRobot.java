@@ -2,7 +2,6 @@ package window;
 
 import java.awt.AWTException;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
@@ -10,8 +9,8 @@ import java.awt.image.MultiResolutionImage;
 
 /**
  * Singleton capture robot, which can capture regions of the screen
+ * 
  * @author ratha
- *
  */
 enum CaptureRobot
 {
@@ -42,20 +41,21 @@ enum CaptureRobot
 	
 	public int getPixelRGB(int x, int y)
 	{
-		if(_robot == null)
+		if (_robot == null)
 			return Color.BLACK.getRGB();
 		return _robot.getPixelColor(x, y).getRGB();
 	}
 	
 	public Color getPixel(int x, int y)
 	{
-		if(_robot == null)
+		if (_robot == null)
 			return Color.BLACK;
 		return _robot.getPixelColor(x, y);
 	}
 	
-	public MultiResolutionImage multiResolutionScreenshot(Rectangle r) {
-		if(_robot == null)
+	public MultiResolutionImage multiResolutionScreenshot(Rectangle r)
+	{
+		if (_robot == null)
 			return null;
 		return _robot.createMultiResolutionScreenCapture(r);
 	}

@@ -35,9 +35,10 @@ public class WindowUtil
 {
 	public static void main(String[] args)
 	{
-		HWND h = getWindow("workspace", SearchType.CONTAINS);
+		HWND h = getWindow("Puzzle Pirates", SearchType.CONTAINS);
 		BufferedImage b = capture(h);
 		var j = new JFrame();
+		System.out.println(b.getWidth() + " " + b.getHeight());
 		j.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		@SuppressWarnings("serial")
 		var label = new JLabel()
@@ -195,7 +196,7 @@ public class WindowUtil
 	public static BufferedImage capture()
 	{
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-		Rectangle region = new Rectangle(0,0,screenSize.width, screenSize.height);
+		Rectangle region = new Rectangle(0, 0, screenSize.width, screenSize.height);
 		return CaptureRobot.INSTANCE.screenshot(region);
 	}
 	
@@ -204,17 +205,20 @@ public class WindowUtil
 	 * 
 	 * @return The associated multi-resolution screen image
 	 */
-	public static MultiResolutionImage multiResolutionCapture() 
+	public static MultiResolutionImage multiResolutionCapture()
 	{
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-		Rectangle region = new Rectangle(0,0,screenSize.width, screenSize.height);
+		Rectangle region = new Rectangle(0, 0, screenSize.width, screenSize.height);
 		return CaptureRobot.INSTANCE.multiResolutionScreenshot(region);
 	}
 	
 	/**
 	 * Gets a pixel on the screen in RGB integer format
-	 * @param x The x-coordinate of the pixel
-	 * @param y The y-coordinate of the pixel
+	 * 
+	 * @param x
+	 *            The x-coordinate of the pixel
+	 * @param y
+	 *            The y-coordinate of the pixel
 	 * @return The pixel's RGB value
 	 */
 	public int getPixelRGB(int x, int y)
@@ -224,8 +228,11 @@ public class WindowUtil
 	
 	/**
 	 * Gets a pixel on the screen as a Color
-	 * @param x The x-coordinate of the pixel
-	 * @param y The y-coordinate of the pixel
+	 * 
+	 * @param x
+	 *            The x-coordinate of the pixel
+	 * @param y
+	 *            The y-coordinate of the pixel
 	 * @return The pixel's Color
 	 */
 	public Color getPixel(int x, int y)
@@ -238,7 +245,7 @@ public class WindowUtil
 	 * 
 	 * @param window
 	 *            A window handle to the given window
-	 * @return The associated window image
+	 * @return The associated window image, excluding the frame
 	 */
 	public static BufferedImage capture(HWND window)
 	{
@@ -256,7 +263,7 @@ public class WindowUtil
 		bmi.bmiHeader.biPlanes = 1;
 		bmi.bmiHeader.biBitCount = 32;
 		bmi.bmiHeader.biCompression = 0;
-		Memory buffer = new Memory(bounds.width * bounds.height * 4L);
+		var buffer = new Memory(bounds.width * bounds.height * 4L);
 		G32.GetDIBits(dcWin, bmp, 0, bounds.height, buffer, bmi, 0);
 		var image =
 			new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_RGB);
@@ -265,6 +272,36 @@ public class WindowUtil
 		G32.DeleteObject(bmp);
 		U32.ReleaseDC(window, dcWin);
 		return image;
+	}
+	
+	/**
+	 * Captures a pixel associated with the given window
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @return A pixel sampled from the associated window image, excluding the frame
+	 */
+	public static int getPixel(HWND window, int x, int y)
+	{
+		HDC dcWin = U32.GetDC(window);
+		HDC dcMem = G32.CreateCompatibleDC(dcWin);
+		HBITMAP bmp = G32.CreateCompatibleBitmap(dcWin, 1, 1);
+		HANDLE hObj = G32.SelectObject(dcMem, bmp);
+		G32.BitBlt(dcMem, 0, 0, 1, 1, dcWin, x, y, GDI32.SRCCOPY);
+		G32.SelectObject(dcMem, hObj);
+		G32.DeleteDC(dcMem);
+		var bmi = new BITMAPINFO();
+		bmi.bmiHeader.biWidth = 1;
+		bmi.bmiHeader.biHeight = -1;
+		bmi.bmiHeader.biPlanes = 1;
+		bmi.bmiHeader.biBitCount = 32;
+		bmi.bmiHeader.biCompression = 0;
+		var buffer = new Memory(4L);
+		G32.GetDIBits(dcWin, bmp, 0, 1, buffer, bmi, 0);
+		int pixel = buffer.getInt(0L);
+		G32.DeleteObject(bmp);
+		U32.ReleaseDC(window, dcWin);
+		return pixel;
 	}
 	
 	/**
