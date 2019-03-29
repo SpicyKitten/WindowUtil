@@ -18,7 +18,7 @@ class WindowUtilTest
 	@Test
 	void testGetWindows()
 	{
-		Frame frame = new JFrame("This is a window with a really long title "
+		var frame = new JFrame("This is a window with a really long title "
 			+ "and nobody should make another frame with the same title "
 			+ "unless they want this test to maliciously fail");
 		frame.setUndecorated(true);

@@ -3,15 +3,14 @@ package window;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
-import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import com.sun.jna.Memory;
@@ -24,7 +23,6 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.BITMAPINFO;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
-import com.sun.jna.platform.win32.WinUser.WNDENUMPROC;
 
 public class WindowUtil
 {
@@ -32,10 +30,10 @@ public class WindowUtil
 	{
 		HWND h = getWindow("workspace", SearchType.CONTAINS);
 		BufferedImage b = capture(h);
-		JFrame j = new JFrame();
+		var j = new JFrame();
 		j.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		@SuppressWarnings("serial")
-		JLabel label = new JLabel()
+		var label = new JLabel()
 		{
 			public void paintComponent(Graphics g)
 			{
@@ -59,7 +57,7 @@ public class WindowUtil
 	private static final GDI32 G32 = GDI32.INSTANCE;
 	static
 	{
-		try (FileInputStream fis = new FileInputStream("windowUtil.config"))
+		try (var fis = new FileInputStream("windowUtil.config"))
 		{
 			properties.load(fis);
 			properties.computeIfPresent("title-search-length",
@@ -133,12 +131,12 @@ public class WindowUtil
 	 */
 	public static List<HWND> getWindows(String query, SearchType search)
 	{
-		ArrayList<HWND> handles = new ArrayList<>();
+		var handles = new ArrayList<HWND>();
 		U32.EnumWindows((HWND, Pointer) ->
 		{
-			char[] titleChars = new char[TITLE_SEARCH_LENGTH + 1];
+			var titleChars = new char[TITLE_SEARCH_LENGTH + 1];
 			U32.GetWindowText(HWND, titleChars, TITLE_SEARCH_LENGTH + 1);
-			String title = new String(titleChars);
+			var title = new String(titleChars);
 			if (matchesSearch(title, query, search))
 				handles.add(HWND);
 			return true;
@@ -159,20 +157,32 @@ public class WindowUtil
 	 */
 	public static HWND getWindow(String query, SearchType search)
 	{
-		HWND[] handle = new HWND[1];
-		U32.EnumWindows(new WNDENUMPROC() {
-            public boolean callback(HWND HWND, Pointer arg1) {
-			char[] titleChars = new char[TITLE_SEARCH_LENGTH + 1];
+		var handle = new HWND[1];
+		U32.EnumWindows((HWND, Pointer) ->
+		{
+			var titleChars = new char[TITLE_SEARCH_LENGTH + 1];
 			U32.GetWindowText(HWND, titleChars, TITLE_SEARCH_LENGTH + 1);
-			String title = new String(titleChars);
+			var title = new String(titleChars);
 			if (matchesSearch(title, query, search))
 			{
 				handle[0] = HWND;
 				return false;
 			}
 			return true;
-		}}, (Pointer)null);
+		}, (Pointer)null);
 		return handle[0];
+	}
+	
+	/**
+	 * Captures an image associated with the current screen
+	 * 
+	 * @return The associated screen image
+	 */
+	public static BufferedImage capture()
+	{
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+		
+		return null;
 	}
 	
 	/**
@@ -180,21 +190,19 @@ public class WindowUtil
 	 * 
 	 * @param window
 	 *            A window handle to the given window
-	 * @return The associated window
+	 * @return The associated window image
 	 */
 	public static BufferedImage capture(HWND window)
 	{
 		HDC dcWin = U32.GetDC(window);
 		HDC dcMem = G32.CreateCompatibleDC(dcWin);
 		Rectangle bounds = getBounds(window);
-		HBITMAP bmp =
-			G32.CreateCompatibleBitmap(dcWin, bounds.width, bounds.height);
+		HBITMAP bmp = G32.CreateCompatibleBitmap(dcWin, bounds.width, bounds.height);
 		HANDLE hObj = G32.SelectObject(dcMem, bmp);
-		G32.BitBlt(dcMem, 0, 0, bounds.width, bounds.height, dcWin, 0, 0,
-			GDI32.SRCCOPY);
+		G32.BitBlt(dcMem, 0, 0, bounds.width, bounds.height, dcWin, 0, 0, GDI32.SRCCOPY);
 		G32.SelectObject(dcMem, hObj);
 		G32.DeleteDC(dcMem);
-		BITMAPINFO bmi = new BITMAPINFO();
+		var bmi = new BITMAPINFO();
 		bmi.bmiHeader.biWidth = bounds.width;
 		bmi.bmiHeader.biHeight = -bounds.height;
 		bmi.bmiHeader.biPlanes = 1;
@@ -202,7 +210,7 @@ public class WindowUtil
 		bmi.bmiHeader.biCompression = 0;
 		Memory buffer = new Memory(bounds.width * bounds.height * 4L);
 		G32.GetDIBits(dcWin, bmp, 0, bounds.height, buffer, bmi, 0);
-		BufferedImage image =
+		var image =
 			new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_RGB);
 		image.setRGB(0, 0, bounds.width, bounds.height,
 			buffer.getIntArray(0L, bounds.width * bounds.height), 0, bounds.width);
@@ -210,8 +218,6 @@ public class WindowUtil
 		U32.ReleaseDC(window, dcWin);
 		return image;
 	}
-	
-	
 	
 	/**
 	 * Gets the bounds for a given window
@@ -222,7 +228,7 @@ public class WindowUtil
 	 */
 	public static Rectangle getBounds(HWND window)
 	{
-		RECT rect = new RECT();
+		var rect = new RECT();
 		U32.GetClientRect(window, rect);
 		return new Rectangle(rect.left, rect.top, rect.right - rect.left,
 			rect.bottom - rect.top);
