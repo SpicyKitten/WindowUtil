@@ -39,18 +39,18 @@ enum CaptureRobot
 		return _robot.createScreenCapture(r);
 	}
 	
-	public int getPixelRGB(int x, int y)
-	{
-		if (_robot == null)
-			return Color.BLACK.getRGB();
-		return _robot.getPixelColor(x, y).getRGB();
-	}
-	
 	public Color getPixel(int x, int y)
 	{
 		if (_robot == null)
 			return Color.BLACK;
 		return _robot.getPixelColor(x, y);
+	}
+	
+	public int getPixelRGB(int x, int y)
+	{
+		if (_robot == null)
+			return Color.BLACK.getRGB();
+		return _robot.getPixelColor(x, y).getRGB();
 	}
 	
 	public MultiResolutionImage multiResolutionScreenshot(Rectangle r)
