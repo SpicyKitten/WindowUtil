@@ -1,10 +1,12 @@
 package window;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
+import java.awt.image.MultiResolutionImage;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,6 +26,11 @@ import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.BITMAPINFO;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 
+/**
+ * Provides helpful window and screen image capture utilities
+ * 
+ * @author ratha
+ */
 public class WindowUtil
 {
 	public static void main(String[] args)
@@ -71,6 +78,13 @@ public class WindowUtil
 				"Library WindowUtil Failed to load resources: Check that config settings are correct");
 		}
 		TITLE_SEARCH_LENGTH = (int)properties.getOrDefault("title-search-length", 256);
+	}
+	
+	/*
+	 * Cannot be instantiated
+	 */
+	private WindowUtil()
+	{
 	}
 	
 	/**
@@ -181,8 +195,42 @@ public class WindowUtil
 	public static BufferedImage capture()
 	{
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-		
-		return null;
+		Rectangle region = new Rectangle(0,0,screenSize.width, screenSize.height);
+		return CaptureRobot.INSTANCE.screenshot(region);
+	}
+	
+	/**
+	 * Captures an image associated with the current screen
+	 * 
+	 * @return The associated multi-resolution screen image
+	 */
+	public static MultiResolutionImage multiResolutionCapture() 
+	{
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+		Rectangle region = new Rectangle(0,0,screenSize.width, screenSize.height);
+		return CaptureRobot.INSTANCE.multiResolutionScreenshot(region);
+	}
+	
+	/**
+	 * Gets a pixel on the screen in RGB integer format
+	 * @param x The x-coordinate of the pixel
+	 * @param y The y-coordinate of the pixel
+	 * @return The pixel's RGB value
+	 */
+	public int getPixelRGB(int x, int y)
+	{
+		return CaptureRobot.INSTANCE.getPixelRGB(x, y);
+	}
+	
+	/**
+	 * Gets a pixel on the screen as a Color
+	 * @param x The x-coordinate of the pixel
+	 * @param y The y-coordinate of the pixel
+	 * @return The pixel's Color
+	 */
+	public Color getPixel(int x, int y)
+	{
+		return CaptureRobot.INSTANCE.getPixel(x, y);
 	}
 	
 	/**
