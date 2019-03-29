@@ -4,15 +4,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.awt.Color;
 import java.awt.Frame;
-import java.awt.Rectangle;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import javax.swing.JFrame;
 import org.junit.jupiter.api.Test;
-import com.sun.jna.platform.win32.WinDef.HWND;
 import window.SearchType;
 import window.WindowUtil;
 
