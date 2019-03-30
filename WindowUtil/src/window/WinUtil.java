@@ -2,7 +2,6 @@ package window;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
@@ -13,8 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.GDI32;
@@ -26,13 +23,14 @@ import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.BITMAPINFO;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.platform.win32.WinUser;
+import com.sun.jna.platform.win32.WinUser.WINDOWPLACEMENT;
 
 /**
  * Provides helpful window and screen image capture utilities
  * 
  * @author ratha
  */
-public class WindowUtil
+public class WinUtil
 {
 	/**
 	 * How many characters to search in any window title
@@ -45,7 +43,7 @@ public class WindowUtil
 	private static final GDI32Extra G32X = GDI32Extra.INSTANCE;
 	static
 	{
-		try (var fis = new FileInputStream("windowUtil.config"))
+		try (var fis = new FileInputStream("winUtil.config"))
 		{
 			properties.load(fis);
 			properties.computeIfPresent("title-search-length",
@@ -56,7 +54,7 @@ public class WindowUtil
 		{
 			e.printStackTrace();
 			System.err.println(
-				"Library WindowUtil Failed to load resources: Check that config settings are correct");
+				"Library WinUtil Failed to load resources: Check that config settings are correct");
 		}
 		TITLE_SEARCH_LENGTH = (int)properties.getOrDefault("title-search-length", 256);
 	}
@@ -64,7 +62,7 @@ public class WindowUtil
 	/*
 	 * Cannot be instantiated
 	 */
-	private WindowUtil()
+	private WinUtil()
 	{
 	}
 	
@@ -86,6 +84,89 @@ public class WindowUtil
 	}
 	
 	/**
+	 * Restores the given window (from minimization or maximization)
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 */
+	public static void restore(HWND window)
+	{
+		if (window == null)
+			return;
+		U32.ShowWindow(window, WinUser.SW_RESTORE);
+	}
+	
+	/**
+	 * Minimizes the given window
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 */
+	public static void minimize(HWND window)
+	{
+		if (window == null)
+			return;
+		U32.ShowWindow(window, WinUser.SW_MINIMIZE);
+	}
+	
+	/**
+	 * Maximizes the given window
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 */
+	public static void maximize(HWND window)
+	{
+		if (window == null)
+			return;
+		U32.ShowWindow(window, WinUser.SW_MAXIMIZE);
+	}
+	
+	/**
+	 * Hides the given window
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 */
+	public static void hide(HWND window)
+	{
+		if (window == null)
+			return;
+		U32.ShowWindow(window, WinUser.SW_HIDE);
+	}
+	
+	/**
+	 * Shows the given window
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 */
+	public static void show(HWND window)
+	{
+		if (window == null)
+			return;
+		U32.ShowWindow(window, WinUser.SW_SHOW);
+	}
+	
+	/**
+	 * Sets the state of the given window, according to the data in {@code flags}
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @param flags
+	 *            An integer parameter specifying the new state of the given window.
+	 *            Further details of the states permitted can be found in
+	 *            {@link WinUser}, as possible values of
+	 *            {@link WINDOWPLACEMENT#showCmd}
+	 */
+	public static void showWindow(HWND window, int flags)
+	{
+		if (window == null)
+			return;
+		U32.ShowWindow(window, flags);
+	}
+	
+	/**
 	 * Determines whether the given window is enabled for mouse/keyboard inputs
 	 * 
 	 * @param window
@@ -101,9 +182,65 @@ public class WindowUtil
 	}
 	
 	/**
+	 * Instead of iterating over windows, this method conveniently generates a
+	 * handle to the current active window. For situations where the foreground
+	 * window may not be the active window, see {@link WinUtil#getForegroundWindow()
+	 * getForegroundWindow}.
+	 * 
+	 * @return A window handle to the currently active window.
+	 */
+	public static HWND getActiveWindow()
+	{
+		return U32.GetActiveWindow();
+	}
+	
+	/**
+	 * Sets the active window to the given window. Unless you know what this does,
+	 * it probably won't help you. In that case you should see
+	 * {@link WinUtil#setForeground(HWND) setForeground}, which is probably
+	 * something closer to what you want.
+	 * 
+	 * @param window
+	 *            A window handle to the window being activated
+	 * @return A window handle to the previously active window
+	 */
+	public static HWND setActiveWindow(HWND window)
+	{
+		if (window == null)
+			return getActiveWindow();
+		return U32X.SetActiveWindow(window);
+	}
+	
+	/**
+	 * Instead of iterating over windows, this method conveniently generates a
+	 * handle to the current foreground window. For situations where the active
+	 * window may not be the foreground window, see {@link WinUtil#getActiveWindow()
+	 * getActiveWindow}.
+	 * 
+	 * @return A window handle to the current foreground window.
+	 */
+	public static HWND getForegroundWindow()
+	{
+		return U32.GetForegroundWindow();
+	}
+	
+	/**
+	 * Changes the Z-order of the given window and brings it to the foreground.
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 */
+	public static void setForeground(HWND window)
+	{
+		if (window == null)
+			return;
+		U32.SetForegroundWindow(window);
+	}
+	
+	/**
 	 * Convenience method returning a window handle of the desktop itself.
 	 * 
-	 * @return A handle to the desktop "window".
+	 * @return A window handle to the desktop "window".
 	 */
 	public static HWND getDesktop()
 	{
@@ -115,10 +252,12 @@ public class WindowUtil
 	 * 
 	 * @param window
 	 *            A window handle to the given window
-	 * @see WindowUtil#quit
+	 * @see WinUtil#quit
 	 */
 	public static void close(HWND window)
 	{
+		if (window == null)
+			return;
 		U32.PostMessage(window, WinUser.WM_CLOSE, null, null);
 	}
 	
@@ -128,10 +267,12 @@ public class WindowUtil
 	 * 
 	 * @param window
 	 *            A window handle to the given window
-	 * @see WindowUtil#close
+	 * @see WinUtil#close
 	 */
 	public static void quit(HWND window)
 	{
+		if (window == null)
+			return;
 		U32.PostMessage(window, WinUser.WM_QUIT, null, null);
 	}
 	
@@ -160,7 +301,7 @@ public class WindowUtil
 			return search.test(title, query);
 		default:
 			throw new IllegalStateException(
-				"Search Type provided but not implemented in WindowUtil.matchesSearch!");
+				"Search Type provided but not implemented in WinUtil.matchesSearch!");
 		}
 	}
 	
@@ -280,7 +421,7 @@ public class WindowUtil
 	 * @param window
 	 *            A window handle to the given window
 	 * @return The associated window image, excluding the frame
-	 * @see WindowUtil#capture(HWND, boolean)
+	 * @see WinUtil#capture(HWND, boolean)
 	 */
 	public static BufferedImage capture(HWND window)
 	{
@@ -394,7 +535,7 @@ public class WindowUtil
 	 * @param window
 	 *            The handle for the given window
 	 * @return A rectangle containing window bound information
-	 * @see WindowUtil#getBounds(HWND, boolean)
+	 * @see WinUtil#getBounds(HWND, boolean)
 	 */
 	public static Rectangle getBounds(HWND window)
 	{
@@ -408,7 +549,7 @@ public class WindowUtil
 	 * Gets the bounds for a given window, possibly including its frame. Be aware
 	 * that in more recent versions of Windows, frames may not be visible, resulting
 	 * in bounds that seem too large (this can be visualized through the
-	 * {@link WindowUtil#capture(HWND, boolean) capture} method with
+	 * {@link WinUtil#capture(HWND, boolean) capture} method with
 	 * {@code fullWindow=true}).
 	 * 
 	 * @param window

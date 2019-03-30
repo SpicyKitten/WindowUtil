@@ -14,4 +14,5 @@ interface User32Extra extends User32
 		Native.load("user32", User32Extra.class, W32APIOptions.DEFAULT_OPTIONS);
 	
 	public HDC GetWindowDC(HWND hWnd);
+	public HWND SetActiveWindow(HWND hWnd);
 }

@@ -17,9 +17,9 @@ import javax.swing.JLabel;
 import org.junit.jupiter.api.Test;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import window.SearchType;
-import window.WindowUtil;
+import window.WinUtil;
 
-class WindowUtilTest
+class WinUtilTest
 {
 	@Test
 	void testGetWindows()
@@ -30,9 +30,9 @@ class WindowUtilTest
 		frame.setUndecorated(true);
 		frame.setBackground(new Color(0, 0, 0, 0));
 		frame.setVisible(true);
-		if (WindowUtil.TITLE_SEARCH_LENGTH > frame.getTitle().length()) // we're good
+		if (WinUtil.TITLE_SEARCH_LENGTH > frame.getTitle().length()) // we're good
 		{
-			Collection<?> elems = WindowUtil.getWindows(
+			Collection<?> elems = WinUtil.getWindows(
 				"This is a window with a really long title", SearchType.START);
 			assertNotNull(elems);
 			assertEquals("There should be one window with the given title!", 1,
@@ -45,7 +45,7 @@ class WindowUtilTest
 	@Test
 	void testMatchesSearch() throws Exception
 	{
-		Class<WindowUtil> c = WindowUtil.class;
+		Class<WinUtil> c = WinUtil.class;
 		Method m = c.getDeclaredMethod("matchesSearch", String.class, String.class,
 			SearchType.class);
 		m.setAccessible(true);
@@ -101,10 +101,10 @@ class WindowUtilTest
 				frame.add(new JLabel(new ImageIcon(b)));
 				frame.pack();
 				frame.setVisible(true);
-				HWND h = WindowUtil.getWindow(
+				HWND h = WinUtil.getWindow(
 					"This is a window with a " + i + "x" + j + " internal size",
 					SearchType.START);
-				Rectangle bounds = WindowUtil.getBounds(h);
+				Rectangle bounds = WinUtil.getBounds(h);
 				double scaleFactor = (double)bounds.width / (double)i;
 				// rounding error <= 0.01
 				assertEquals("This is a window with a " + i + "x" + j
@@ -134,9 +134,8 @@ class WindowUtilTest
 		frame.add(new JLabel(new ImageIcon(b)));
 		frame.pack();
 		frame.setVisible(true);
-		HWND h =
-			WindowUtil.getWindow("This is a window with a red pixel", SearchType.START);
-		int rgb = WindowUtil.getPixel(h, 0, 0);
+		HWND h = WinUtil.getWindow("This is a window with a red pixel", SearchType.START);
+		int rgb = WinUtil.getPixel(h, 0, 0);
 		assertEquals("Pixel should be red!", 255 << 16, rgb & 0xffffff);
 		frame.setVisible(false);
 	}
@@ -156,9 +155,9 @@ class WindowUtilTest
 		frame.add(new JLabel(new ImageIcon(b)));
 		frame.pack();
 		frame.setVisible(true);
-		HWND h = WindowUtil.getWindow("This is a window that is entirely green",
+		HWND h = WinUtil.getWindow("This is a window that is entirely green",
 			SearchType.START);
-		BufferedImage rgb = WindowUtil.capture(h);
+		BufferedImage rgb = WinUtil.capture(h);
 		for (int i = 0; i < rgb.getWidth(); ++i)
 		{
 			for (int j = 0; j < rgb.getHeight(); ++j)
