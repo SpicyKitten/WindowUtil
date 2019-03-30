@@ -71,7 +71,9 @@ enum CaptureRobot
 	
 	/**
 	 * Takes a screenshot of a screen region
-	 * @param r The region to screenshot
+	 * 
+	 * @param r
+	 *            The region to screenshot
 	 * @return The screenshot
 	 */
 	public MultiResolutionImage multiResolutionScreenshot(Rectangle r)

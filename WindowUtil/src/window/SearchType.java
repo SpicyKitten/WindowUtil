@@ -1,6 +1,6 @@
 package window;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
 
 /**
  * A search typing. Takes two strings and validates the first according to the
