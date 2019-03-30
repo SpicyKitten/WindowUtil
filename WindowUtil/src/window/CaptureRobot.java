@@ -17,6 +17,9 @@ enum CaptureRobot
 	INSTANCE;
 	private final Robot _robot;
 	
+	/**
+	 * Initializes the value of the singleton
+	 */
 	private CaptureRobot()
 	{
 		Robot temp = null;
@@ -32,6 +35,11 @@ enum CaptureRobot
 		_robot = temp;
 	}
 	
+	/**
+	 * Takes a screenshot of a screen region
+	 * @param r The region to screenshot
+	 * @return The screenshot
+	 */
 	public BufferedImage screenshot(Rectangle r)
 	{
 		if (_robot == null)
@@ -39,6 +47,10 @@ enum CaptureRobot
 		return _robot.createScreenCapture(r);
 	}
 	
+	/**
+	 * Gets the pixel at (x,y) on the screen
+	 * @return The pixel at (x,y) as a Color
+	 */
 	public Color getPixel(int x, int y)
 	{
 		if (_robot == null)
@@ -46,6 +58,10 @@ enum CaptureRobot
 		return _robot.getPixelColor(x, y);
 	}
 	
+	/**
+	 * Gets the pixel at (x,y) on the screen
+	 * @return The pixel at (x,y) as RGB int
+	 */
 	public int getPixelRGB(int x, int y)
 	{
 		if (_robot == null)
@@ -53,6 +69,11 @@ enum CaptureRobot
 		return _robot.getPixelColor(x, y).getRGB();
 	}
 	
+	/**
+	 * Takes a screenshot of a screen region
+	 * @param r The region to screenshot
+	 * @return The screenshot
+	 */
 	public MultiResolutionImage multiResolutionScreenshot(Rectangle r)
 	{
 		if (_robot == null)
