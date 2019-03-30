@@ -1,1 +1,0 @@
-typeSearchIndex = [{"p":"window","l":"WindowUtil"}]
