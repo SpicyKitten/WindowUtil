@@ -8,7 +8,8 @@ import java.awt.image.BufferedImage;
 import java.awt.image.MultiResolutionImage;
 
 /**
- * Singleton capture robot, which can capture regions of the screen
+ * Singleton capture robot, which can capture regions of the screen.
+ * Intentionally package protected.
  * 
  * @author ratha
  */
@@ -37,7 +38,9 @@ enum CaptureRobot
 	
 	/**
 	 * Takes a screenshot of a screen region
-	 * @param r The region to screenshot
+	 * 
+	 * @param r
+	 *            The region to screenshot
 	 * @return The screenshot
 	 */
 	public BufferedImage screenshot(Rectangle r)
@@ -49,6 +52,7 @@ enum CaptureRobot
 	
 	/**
 	 * Gets the pixel at (x,y) on the screen
+	 * 
 	 * @return The pixel at (x,y) as a Color
 	 */
 	public Color getPixel(int x, int y)
@@ -60,6 +64,7 @@ enum CaptureRobot
 	
 	/**
 	 * Gets the pixel at (x,y) on the screen
+	 * 
 	 * @return The pixel at (x,y) as RGB int
 	 */
 	public int getPixelRGB(int x, int y)

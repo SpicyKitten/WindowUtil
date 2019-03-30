@@ -2,6 +2,7 @@ package window;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
@@ -12,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.GDI32;
@@ -22,6 +25,7 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.BITMAPINFO;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
+import com.sun.jna.platform.win32.WinUser;
 
 /**
  * Provides helpful window and screen image capture utilities
@@ -37,6 +41,8 @@ public class WindowUtil
 	private static final Properties properties = new Properties();
 	private static final User32 U32 = User32.INSTANCE;
 	private static final GDI32 G32 = GDI32.INSTANCE;
+	private static final User32Extra U32X = User32Extra.INSTANCE;
+	private static final GDI32Extra G32X = GDI32Extra.INSTANCE;
 	static
 	{
 		try (var fis = new FileInputStream("windowUtil.config"))
@@ -77,6 +83,56 @@ public class WindowUtil
 	private static <R> R readProperty(Function<String, R> converter, Object property)
 	{
 		return converter.apply(((String)property));
+	}
+	
+	/**
+	 * Determines whether the given window is enabled for mouse/keyboard inputs
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @return Whether the window is enabled for inputs, or false if handle
+	 *         {@code window} is null
+	 */
+	public static boolean isEnabled(HWND window)
+	{
+		if (window == null)
+			return false;
+		return U32.IsWindowEnabled(window);
+	}
+	
+	/**
+	 * Convenience method returning a window handle of the desktop itself.
+	 * 
+	 * @return A handle to the desktop "window".
+	 */
+	public static HWND getDesktop()
+	{
+		return U32.GetDesktopWindow();
+	}
+	
+	/**
+	 * Closes the given window by sending a "Close" message
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @see WindowUtil#quit
+	 */
+	public static void close(HWND window)
+	{
+		U32.PostMessage(window, WinUser.WM_CLOSE, null, null);
+	}
+	
+	/**
+	 * Closes the given window, forcibly. This could be useful for closing
+	 * applications that prompt on close if you want to ignore such prompts.
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @see WindowUtil#close
+	 */
+	public static void quit(HWND window)
+	{
+		U32.PostMessage(window, WinUser.WM_QUIT, null, null);
 	}
 	
 	/**
@@ -122,6 +178,8 @@ public class WindowUtil
 	public static <T> List<T> enumerateWindows(Function<HWND, T> op)
 	{
 		var output = new ArrayList<T>();
+		if (op == null)
+			return output;
 		U32.EnumWindows((HWND, Pointer) ->
 		{
 			T result = op.apply(HWND);
@@ -136,7 +194,7 @@ public class WindowUtil
 	 * Gets the window text associated with the given window
 	 * 
 	 * @param window
-	 *            The window handle to the given window
+	 *            A window handle to the given window
 	 * @param n
 	 *            The maximum number of characters in the text buffer(not including
 	 *            the null character)
@@ -145,6 +203,8 @@ public class WindowUtil
 	 */
 	public static String getTitle(HWND window, int n)
 	{
+		if (window == null || n <= 0)
+			return "";
 		var buffer = new char[n + 1];
 		U32.GetWindowText(window, buffer, n + 1);
 		return new String(buffer).trim();
@@ -220,12 +280,33 @@ public class WindowUtil
 	 * @param window
 	 *            A window handle to the given window
 	 * @return The associated window image, excluding the frame
+	 * @see WindowUtil#capture(HWND, boolean)
 	 */
 	public static BufferedImage capture(HWND window)
 	{
-		HDC dcWin = U32.GetDC(window);
+		return capture(window, false);
+	}
+	
+	/**
+	 * Captures an image associated with the given window. Be aware that in more
+	 * recent versions of Windows, frames may not be visible, resulting in capture
+	 * of extraneous elements.
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @param fullWindow
+	 *            Whether to include the frame in the image
+	 * @return The associated window image, possibly including the frame
+	 */
+	public static BufferedImage capture(HWND window, boolean fullWindow)
+	{
+		if (window == null)
+			return null;
+		Rectangle bounds = getBounds(window, fullWindow);
+		if (bounds.width == 0 || bounds.height == 0)
+			return null;
+		HDC dcWin = fullWindow ? U32X.GetWindowDC(window) : U32.GetDC(window);
 		HDC dcMem = G32.CreateCompatibleDC(dcWin);
-		Rectangle bounds = getBounds(window);
 		HBITMAP bmp = G32.CreateCompatibleBitmap(dcWin, bounds.width, bounds.height);
 		HANDLE hObj = G32.SelectObject(dcMem, bmp);
 		G32.BitBlt(dcMem, 0, 0, bounds.width, bounds.height, dcWin, 0, 0, GDI32.SRCCOPY);
@@ -288,24 +369,9 @@ public class WindowUtil
 	public static int getPixel(HWND window, int x, int y)
 	{
 		HDC dcWin = U32.GetDC(window);
-		HDC dcMem = G32.CreateCompatibleDC(dcWin);
-		HBITMAP bmp = G32.CreateCompatibleBitmap(dcWin, 1, 1);
-		HANDLE hObj = G32.SelectObject(dcMem, bmp);
-		G32.BitBlt(dcMem, 0, 0, 1, 1, dcWin, x, y, GDI32.SRCCOPY);
-		G32.SelectObject(dcMem, hObj);
-		G32.DeleteDC(dcMem);
-		var bmi = new BITMAPINFO();
-		bmi.bmiHeader.biWidth = 1;
-		bmi.bmiHeader.biHeight = -1;
-		bmi.bmiHeader.biPlanes = 1;
-		bmi.bmiHeader.biBitCount = 32;
-		bmi.bmiHeader.biCompression = 0;
-		var buffer = new Memory(4L);
-		G32.GetDIBits(dcWin, bmp, 0, 1, buffer, bmi, 0);
-		int pixel = buffer.getInt(0L);
-		G32.DeleteObject(bmp);
+		int pixel = G32X.GetPixel(dcWin, x, y);
 		U32.ReleaseDC(window, dcWin);
-		return pixel;
+		return (pixel & ~0xFF00FF) | ((pixel & 0xFF) << 16) | ((pixel & 0xFF0000) >> 16);
 	}
 	
 	/**
@@ -323,16 +389,41 @@ public class WindowUtil
 	}
 	
 	/**
-	 * Gets the bounds for a given window
+	 * Gets the bounds for a given window, not including its frame
 	 * 
 	 * @param window
 	 *            The handle for the given window
 	 * @return A rectangle containing window bound information
+	 * @see WindowUtil#getBounds(HWND, boolean)
 	 */
 	public static Rectangle getBounds(HWND window)
 	{
 		var rect = new RECT();
 		U32.GetClientRect(window, rect);
+		return new Rectangle(rect.left, rect.top, rect.right - rect.left,
+			rect.bottom - rect.top);
+	}
+	
+	/**
+	 * Gets the bounds for a given window, possibly including its frame. Be aware
+	 * that in more recent versions of Windows, frames may not be visible, resulting
+	 * in bounds that seem too large (this can be visualized through the
+	 * {@link WindowUtil#capture(HWND, boolean) capture} method with
+	 * {@code fullWindow=true}).
+	 * 
+	 * @param window
+	 *            The handle for the given window
+	 * @param fullWindow
+	 *            Whether or not to include the window frame in the window bounds
+	 * @return A rectangle containing window bound information
+	 */
+	public static Rectangle getBounds(HWND window, boolean fullWindow)
+	{
+		var rect = new RECT();
+		if (fullWindow)
+			U32.GetWindowRect(window, rect);
+		else
+			U32.GetClientRect(window, rect);
 		return new Rectangle(rect.left, rect.top, rect.right - rect.left,
 			rect.bottom - rect.top);
 	}
