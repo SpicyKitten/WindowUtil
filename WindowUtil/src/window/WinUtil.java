@@ -25,7 +25,6 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.platform.win32.WinUser;
 import com.sun.jna.platform.win32.WinUser.WINDOWPLACEMENT;
 import window.WinDefExtra.HKL;
-// import com.sun.jna.platform.win32.WinDef.HKL;
 
 /**
  * Provides helpful window and screen image capture utilities
@@ -395,6 +394,21 @@ public class WinUtil
 			return true;
 		}, (Pointer)null);
 		return output;
+	}
+	
+	/**
+	 * Gets the window text associated with the given window. Equivalent to
+	 * {@link WinUtil#getTitle(HWND, int) getTitle(window,
+	 * WinUtil.TITLE_SEARCH_LENGTH)}
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @return A trimmed string that is the title of the given window, with maximum
+	 *         {@code TITLE_SEARCH_LENGTH} characters
+	 */
+	public static String getTitle(HWND window)
+	{
+		return getTitle(window, TITLE_SEARCH_LENGTH);
 	}
 	
 	/**
