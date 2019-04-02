@@ -24,6 +24,8 @@ import com.sun.jna.platform.win32.WinGDI.BITMAPINFO;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.platform.win32.WinUser;
 import com.sun.jna.platform.win32.WinUser.WINDOWPLACEMENT;
+import window.WinDefExtra.HKL;
+// import com.sun.jna.platform.win32.WinDef.HKL;
 
 /**
  * Provides helpful window and screen image capture utilities
@@ -36,11 +38,12 @@ public class WinUtil
 	 * How many characters to search in any window title
 	 */
 	public static final int TITLE_SEARCH_LENGTH;
-	private static final Properties properties = new Properties();
+	static final Properties properties = new Properties();
 	private static final User32 U32 = User32.INSTANCE;
 	private static final GDI32 G32 = GDI32.INSTANCE;
 	private static final User32Extra U32X = User32Extra.INSTANCE;
 	private static final GDI32Extra G32X = GDI32Extra.INSTANCE;
+	
 	static
 	{
 		try (var fis = new FileInputStream("winUtil.config"))
@@ -69,18 +72,81 @@ public class WinUtil
 	/**
 	 * @return A function which cleans comments from configuration file properties
 	 */
-	private static Function<String, String> cleanComments()
+	static Function<String, String> cleanComments()
 	{
 		return (property) -> property.replaceAll("//.*", "");
 	}
 	
 	/**
-	 * reads a property of type R from {@code property} using conversion function
+	 * Reads a property of type R from {@code property} using conversion function
 	 * {@code converter}
 	 */
-	private static <R> R readProperty(Function<String, R> converter, Object property)
+	static <R> R readProperty(Function<String, R> converter, Object property)
 	{
 		return converter.apply(((String)property));
+	}
+	
+	/**
+	 * Convenience method for getting the ID of the thread that created the given
+	 * window
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @throws IllegalArgumentException
+	 *             If {@code window} is null
+	 * @return The identifier of the thread that created the given window
+	 */
+	public static int getThread(HWND window)
+	{
+		if (window == null)
+			throw new IllegalArgumentException(
+				"The provided window handle cannot be null!");
+		return U32.GetWindowThreadProcessId(window, null);
+	}
+	
+	/**
+	 * Convenience method for getting the input locale identifier for the given
+	 * window.
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @return Data specifying the input locale identifier
+	 */
+	public static HKL getLocaleIdentifier(HWND window)
+	{
+		if (window == null)
+			return null;
+		return U32X.GetKeyboardLayout(getThread(window));
+	}
+	
+	/**
+	 * You want to send a keystroke (or more) to a given window. You have the window
+	 * handle. You have the representations. You wish to know the <b>virtual</b>
+	 * keycodes for your keystrokes. What now? You call this function. Beware: using
+	 * PostMessage to send keys is not a good/effective idea, so such functionality
+	 * is not supported. Virtual keycode functionality is only provided for
+	 * convenience purposes.
+	 * 
+	 * @param window
+	 *            A window handle to the given window
+	 * @param chars
+	 *            The sequence of characters you wish to send to the window
+	 * @return A sequence of <b>virtual</b> keycodes corresponding to each of the
+	 *         provided characters
+	 */
+	public static short[] virtualKeyCodes(HWND window, char... chars)
+	{
+		if (window == null || chars == null || chars.length < 1)
+			return null;
+		short[] codes = new short[chars.length];
+		HKL localeIdentifier = getLocaleIdentifier(window);
+		if (localeIdentifier == null)
+			return null;
+		for (int i = 0; i < chars.length; ++i)
+		{
+			codes[i] = U32X.VkKeyScanExA((byte)chars[i], localeIdentifier);
+		}
+		return codes;
 	}
 	
 	/**
