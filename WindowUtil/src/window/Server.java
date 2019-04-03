@@ -73,7 +73,6 @@ public class Server
 				process.destroy();
 				System.out.println("KeySender terminated.");
 			}));
-			
 			return true;
 		}
 		catch (Exception e)
@@ -89,6 +88,7 @@ public class Server
 		new ConcurrentLinkedQueue<>();
 	static final Charset utf8 = StandardCharsets.UTF_8;
 	static final int PORT;
+	static volatile ReadyState isReady = ReadyState.BUSY;
 	static
 	{
 		try
@@ -103,6 +103,11 @@ public class Server
 				"WinUtil Key Server failed to load resources: Check that config settings are correct");
 		}
 		PORT = (int)WinUtil.properties.getOrDefault("send-key-port", 6060);
+	}
+	
+	public static boolean ready()
+	{
+		return isReady == ReadyState.READY;
 	}
 	
 	public static void run(Socket connect)
@@ -125,9 +130,7 @@ public class Server
 				System.out.println("Request: " + input);
 			request = input;
 			var parse = new StringTokenizer(input);
-			String method = parse.nextToken().toUpperCase(); // we get the HTTP method of
-																// the client
-			// we get file requested
+			String method = parse.nextToken().toUpperCase();
 			request = parse.nextToken().toLowerCase();
 			
 			if (method.equals("POST") && request.equals("/actionsequence"))
@@ -139,8 +142,7 @@ public class Server
 					String[] mapping = line.split(":", 2);
 					params.put(mapping[0].trim(), mapping[1].trim());
 				}
-				if (verbose)
-					params.entrySet().forEach(System.out::println);
+				// params.entrySet().forEach(System.out::println);
 				int length = Integer.parseInt(params.get("Content-Length"));
 				var buffer = new char[length];
 				int actualRead = in.read(buffer, 0, length);
@@ -148,16 +150,26 @@ public class Server
 				String[] info = s.split("=", 2);
 				if (verbose)
 					System.out.println("Read: " + s);
-				actionSequence.offer(URLDecoder.decode(info[0], utf8) + "="
-					+ URLDecoder.decode(info[1], utf8));
+				synchronized (isReady)
+				{
+					isReady = ReadyState.BUSY;
+					actionSequence.offer(URLDecoder.decode(info[0], utf8) + "="
+						+ URLDecoder.decode(info[1], utf8));
+				}
 				textResponse(out, dataOut, "Action sequence accepted");
 			}
 			else if (method.equals("GET") && request.equals("/actionsequence"))
 			{
 				String output = "";
-				if (!actionSequence.isEmpty())
+				synchronized (isReady)
 				{
-					output = actionSequence.poll();
+					if (!actionSequence.isEmpty())
+					{
+						isReady = ReadyState.BUSY;
+						output = actionSequence.poll();
+					}
+					else
+						isReady = ReadyState.READY;
 				}
 				textResponse(out, dataOut, output);
 			}
