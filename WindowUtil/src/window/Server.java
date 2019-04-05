@@ -125,7 +125,10 @@ public class Server
 			// get first line of the request from the client
 			String input = in.readLine();
 			if (input == null)
+			{
+				textResponse(out, dataOut, "");
 				return;
+			}
 			if (verbose)
 				System.out.println("Request: " + input);
 			request = input;
@@ -208,6 +211,11 @@ public class Server
 		{
 			System.err.println("Server error : " + ioe);
 		}
+		catch (Exception e)
+		{
+			System.err.println("Unknown error: " + e.getMessage());
+			e.printStackTrace();
+		}
 		finally
 		{
 			try
@@ -222,13 +230,7 @@ public class Server
 			{
 				System.err.println("Error closing stream : " + e.getMessage());
 			}
-			
-			if (verbose)
-			{
-				System.out.println("Connection closed.\n");
-			}
 		}
-		
 	}
 	
 	private static void fileResponse(PrintWriter out, OutputStream dataOut, File file,
@@ -257,7 +259,7 @@ public class Server
 		out.println("HTTP/1.1 200 OK");
 		out.println("Server: Java HTTP Server : 1.0");
 		out.println("Date: " + new Date());
-		out.println("Content-type: " + "text/plain");
+		out.println("Content-type: text/plain");
 		out.println("Content-length: " + data.length);
 		out.println();
 		out.flush();
