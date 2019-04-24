@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +21,8 @@ import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import throwing.Catcher;
 import throwing.Throwing;
 
 /**
@@ -32,9 +35,9 @@ public class Server
 {
 	/**
 	 * Launches a server to communicate with an AutoHotKey executable that sends
-	 * keys to windows in the background. Both the server and the executable cease
-	 * to function at the moment that the JVM exits, if {@code daemon} is set to
-	 * true.
+	 * keys to windows in the background. Both the server and the executable
+	 * cease to function at the moment that the JVM exits, if {@code daemon} is
+	 * set to true.
 	 * 
 	 * @param daemon
 	 *            Whether to launch the server on a daemon thread
@@ -45,28 +48,29 @@ public class Server
 		System.out.println("Launching key server on port " + PORT + "...");
 		try
 		{
-			@SuppressWarnings("resource") // closed when the VM shuts down
+			@SuppressWarnings( "resource" ) // closed when the VM shuts down
 			var s = new ServerSocket(PORT, 0, InetAddress.getByName("localhost"));
 			Runtime.getRuntime().addShutdownHook(new Thread(Throwing.of(s::close)));
 			var serverThread = new Thread(Throwing.of(() ->
 			{
-				while (true)
+				while(true)
 				{
 					Socket a = s.accept();
 					var acceptor = new Thread(() -> run(a));
 					/*
-					 * Although the parent may be a daemon, we want connections to be
-					 * processed before exiting the JVM
+					 * Although the parent may be a daemon, we want connections
+					 * to be processed before exiting the JVM
 					 */
 					acceptor.setDaemon(false);
 					acceptor.start();
 				}
-			}, (e) -> System.out.println("Server dead: " + e.getMessage())));
+			}, Catcher
+				.of(SocketException.class, (e) -> System.out.println("Server dead: Socket closed."))
+				.andThen((e) -> System.out.println("Server dead: " + e.getMessage()))));
 			serverThread.setDaemon(daemon);
 			serverThread.start();
 			System.out.println("Server up and running!");
-			var process =
-				new ProcessBuilder("resources/KeySender.exe", "" + PORT).start();
+			var process = new ProcessBuilder("resources/KeySender.exe", "" + PORT).start();
 			System.out.println("KeySender launched!");
 			Runtime.getRuntime().addShutdownHook(new Thread(() ->
 			{
@@ -75,7 +79,7 @@ public class Server
 			}));
 			return true;
 		}
-		catch (Exception e)
+		catch(Exception e)
 		{
 			System.err.println("Failed to launch server: " + e.getMessage());
 			return false;
@@ -84,8 +88,7 @@ public class Server
 	
 	static final File ROOT = new File(".");
 	static final boolean verbose = false;
-	static final ConcurrentLinkedQueue<String> actionSequence =
-		new ConcurrentLinkedQueue<>();
+	static final ConcurrentLinkedQueue<String> actionSequence = new ConcurrentLinkedQueue<>();
 	static final Charset utf8 = StandardCharsets.UTF_8;
 	static final int PORT;
 	static volatile ReadyState isReady = ReadyState.BUSY;
@@ -96,13 +99,13 @@ public class Server
 			WinUtil.properties.computeIfPresent("send-key-port", (a, b) -> WinUtil
 				.readProperty(WinUtil.cleanComments().andThen(Integer::parseInt), b));
 		}
-		catch (NumberFormatException e)
+		catch(NumberFormatException e)
 		{
 			e.printStackTrace();
 			System.err.println(
 				"WinUtil Key Server failed to load resources: Check that config settings are correct");
 		}
-		PORT = (int)WinUtil.properties.getOrDefault("send-key-port", 6060);
+		PORT = (int) WinUtil.properties.getOrDefault("send-key-port", 6060);
 	}
 	
 	public static boolean ready()
@@ -124,23 +127,23 @@ public class Server
 			
 			// get first line of the request from the client
 			String input = in.readLine();
-			if (input == null)
+			if(input == null)
 			{
 				textResponse(out, dataOut, "");
 				return;
 			}
-			if (verbose)
+			if(verbose)
 				System.out.println("Request: " + input);
 			request = input;
 			var parse = new StringTokenizer(input);
 			String method = parse.nextToken().toUpperCase();
 			request = parse.nextToken().toLowerCase();
 			
-			if (method.equals("POST") && request.equals("/actionsequence"))
+			if(method.equals("POST") && request.equals("/actionsequence"))
 			{
 				var params = new HashMap<String, String>();
 				String line = "";
-				while (!(line = in.readLine()).equals(""))
+				while(!( line = in.readLine() ).equals(""))
 				{
 					String[] mapping = line.split(":", 2);
 					params.put(mapping[0].trim(), mapping[1].trim());
@@ -151,22 +154,22 @@ public class Server
 				int actualRead = in.read(buffer, 0, length);
 				var s = new String(buffer, 0, actualRead);
 				String[] info = s.split("=", 2);
-				if (verbose)
+				if(verbose)
 					System.out.println("Read: " + s);
 				synchronized (isReady)
 				{
 					isReady = ReadyState.BUSY;
-					actionSequence.offer(URLDecoder.decode(info[0], utf8) + "="
-						+ URLDecoder.decode(info[1], utf8));
+					actionSequence.offer(
+						URLDecoder.decode(info[0], utf8) + "=" + URLDecoder.decode(info[1], utf8));
 				}
 				textResponse(out, dataOut, "Action sequence accepted");
 			}
-			else if (method.equals("GET") && request.equals("/actionsequence"))
+			else if(method.equals("GET") && request.equals("/actionsequence"))
 			{
 				String output = "";
 				synchronized (isReady)
 				{
-					if (!actionSequence.isEmpty())
+					if(!actionSequence.isEmpty())
 					{
 						isReady = ReadyState.BUSY;
 						output = actionSequence.poll();
@@ -178,7 +181,7 @@ public class Server
 			}
 			else
 			{
-				if (verbose)
+				if(verbose)
 				{
 					System.out.println("501 Not Implemented : " + method);
 				}
@@ -187,31 +190,29 @@ public class Server
 					"501 Not Implemented");
 			}
 		}
-		catch (NoSuchElementException | FileNotFoundException fnfe)
+		catch(NoSuchElementException | FileNotFoundException fnfe)
 		{
 			try
 			{
-				fileResponse(out, dataOut, new File(ROOT, "404.html"),
-					"404 File Not Found");
+				fileResponse(out, dataOut, new File(ROOT, "404.html"), "404 File Not Found");
 			}
-			catch (IOException ioe)
+			catch(IOException ioe)
 			{
-				System.err
-					.println("Error with file not found response: " + ioe.getMessage());
+				System.err.println("Error with file not found response: " + ioe.getMessage());
 			}
-			if (verbose)
+			if(verbose)
 			{
-				if (fnfe instanceof FileNotFoundException)
+				if(fnfe instanceof FileNotFoundException)
 					System.out.println("File " + request + " not found");
 				else
 					System.out.println("Error parsing: " + request);
 			}
 		}
-		catch (IOException ioe)
+		catch(IOException ioe)
 		{
 			System.err.println("Server error : " + ioe);
 		}
-		catch (Exception e)
+		catch(Exception e)
 		{
 			System.err.println("Unknown error: " + e.getMessage());
 			e.printStackTrace();
@@ -223,20 +224,20 @@ public class Server
 				in.close();
 				out.close();
 				dataOut.close();
-				if (!connect.isClosed())
+				if(!connect.isClosed())
 					connect.close(); // we close socket connection
 			}
-			catch (Exception e)
+			catch(Exception e)
 			{
 				System.err.println("Error closing stream : " + e.getMessage());
 			}
 		}
 	}
 	
-	private static void fileResponse(PrintWriter out, OutputStream dataOut, File file,
-		String code) throws IOException
+	private static void fileResponse(PrintWriter out, OutputStream dataOut, File file, String code)
+		throws IOException
 	{
-		int fileLength = (int)file.length();
+		int fileLength = (int) file.length();
 		String contentType = getContentType(file.getPath());
 		byte[] fileData = readFileData(file, fileLength);
 		
@@ -270,7 +271,7 @@ public class Server
 	
 	private static String getContentType(String fileRequested)
 	{
-		if (fileRequested.endsWith(".htm") || fileRequested.endsWith(".html"))
+		if(fileRequested.endsWith(".htm") || fileRequested.endsWith(".html"))
 			return "text/html";
 		else
 			return "text/plain";
