@@ -1,103 +1,106 @@
 package throwing;
 
-import java.io.IOException;
-import java.net.SocketException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.BiConsumer;
+import java.util.LinkedHashMap;
 import java.util.function.Consumer;
 
-@FunctionalInterface
-public interface Catcher<T extends Exception> extends BiConsumer<Class<? super T>, T>, Consumer<Exception>
+/**
+ * Catches Exceptions, in order of specification, and 
+ * redirects those exceptions to the appropriate handlers
+ * 
+ * @author ratha
+ *
+ * @param <T> The type of exceptions first caught by this Catcher
+ */
+public class Catcher<T extends Exception> implements Consumer<Exception>
 {
-	final Map<Catcher<? extends Exception>, Catcher<? extends Exception>> alternative = new HashMap<>();
-	
-	public abstract void accept_(Exception t);
-	
-	default void alternative(Exception e)
-	{
-		if(Catcher.alternative.containsKey(this))
-			Catcher.alternative.get(this).accept_(e);
-	}
-	
-	default void accept(Exception e)
-	{
-		accept_(e);
-	}
-	
+	private LinkedHashMap<Class<? extends Exception>, Consumer<Exception>> checker;
+
 	@Override
-	default void accept(Class<? super T> t, T u)
+	public void accept(Exception t)
 	{
-		if(t.isInstance(u))
-			accept_(u);
-		else if(alternative.containsKey(this))
-			alternative.get(this).accept_(u);
+		checker.keySet().stream().dropWhile(k -> !k.isInstance(t)).findFirst().map(checker::get)
+				.ifPresent(k -> k.accept(t));
 	}
-	
-	public static <T extends Exception> Catcher<T> of(Catcher<T> consumer,
-		Catcher<? extends Exception> other)
+
+	/**
+	 * Creates a Catcher catching T and redirecting exceptions to {@code cons}
+	 */
+	private Catcher(Class<T> cls, Consumer<Exception> cons)
 	{
-		Catcher<T> ret = (t) ->
-		{
-			consumer.accept_(t);
-		};
-		Catcher.alternative.put(consumer, other);
-		Catcher.alternative.put(other, ret::alternative);
+		checker = new LinkedHashMap<>();
+		checker.put(cls, cons);
+	}
+
+	/**
+	 * Creates a Catcher catching T as a copy of another
+	 */
+	private Catcher(Catcher<T> other)
+	{
+		checker = new LinkedHashMap<>(other.checker);
+	}
+
+	/**
+	 * @param cons A Consumer of exceptions with type T
+	 * @return A Catcher catching T and redirecting exceptions to {@code cons}
+	 */
+	public static <T extends Exception> Catcher<T> of(Class<T> cls, Consumer<Exception> cons)
+	{
+		return new Catcher<T>(cls, cons);
+	}
+
+	/**
+	 * @param cons A Consumer of exceptions
+	 * @return A Catcher catching Exception and redirecting exceptions to {@code cons}
+	 */
+	public static Catcher<Exception> of(Consumer<Exception> cons)
+	{
+		return Catcher.of(Exception.class, cons);
+	}
+
+	@Deprecated
+	public Catcher<T> andThen(Consumer<? super Exception> after)
+	{
+		// Method not supported, as the type bound is too loose
+		// Tightening the type bound will generate a name clash with andThen(Catcher)
+		throw new IllegalStateException("Method andThen(Consumer<?>) not supported");
+	}
+
+	/**
+	 * Returns a chained catcher for {@code this} Catcher followed by the
+	 * {@code next} Catcher. {@link Catcher#andThen(Catcher) andThen} can be chained
+	 * until a terminal Catcher (one with {@code cls == Exception.class}) is created
+	 * 
+	 * @param after The next catcher in the chain
+	 * @return A catcher that checks this Catcher's matching for an exception. If
+	 *         this catcher does not apply to the exception, then it uses
+	 *         {@code after} to process the exception instead.
+	 */
+	public Catcher<T> andThen(Catcher<? extends Exception> after)
+	{
+		if (checker.containsKey(Exception.class))
+			throw new IllegalStateException("All exception types have already been accounted for!");
+		var ret = new Catcher<>(this);
+		for(var entry : after.checker.entrySet())
+			if(!ret.checker.containsKey(entry.getKey()))
+				ret.checker.put(entry.getKey(), entry.getValue());
 		return ret;
 	}
-	
-	public static Catcher<Exception> of(Catcher<Exception> consumer)
+
+	/**
+	 * Returns a chained catcher for {@code this} Catcher and another
+	 * {@literal Consumer<Exception>}. {@link Catcher#andThen(Catcher) andThen} can
+	 * be chained until a terminal Catcher (one with {@code cls == Exception.class})
+	 * is created
+	 * 
+	 * @param <S>  The type of exception caught by the next consumer
+	 * @param cls  The class value of the exception type caught by the next consumer
+	 * @param cons The consumer following the checks of {@code this} Catcher
+	 * @return A catcher that checks this Catcher's matching for an exception. If
+	 *         this catcher does not apply to the exception, then it uses
+	 *         {@code cons} to process exceptions of type {@code S} instead.
+	 */
+	public <S extends Exception> Catcher<T> andThen(Class<S> cls, Consumer<Exception> cons)
 	{
-		return (Exception t) ->
-		{
-			consumer.accept(Exception.class, t);
-		};
-	}
-	
-	@SuppressWarnings( "unchecked" )
-	public static <T extends Exception> Catcher<T> of(Class<T> cls, Catcher<T> consumer)
-	{
-		Catcher<T> ret = (Exception t) ->
-		{
-			consumer.accept(cls, (T) t);
-		};
-		Catcher.alternative.put(consumer, ret::alternative);
-		return ret;
-	}
-	
-	default Catcher<T> andThen(Catcher<? extends Exception> after)
-	{
-		return Catcher.of(this, after);
-	}
-	
-	// @Override
-	// default BiConsumer<Class<? super T>, T> andThen(
-	// BiConsumer<? super Class<? super T>, ? super T> after)
-	// {
-	// // TODO Auto-generated method stub
-	// return BiConsumer.super.andThen(after);
-	// }
-	
-	// public static BiConsumer<Class<?>, BiFunction<?,?,?>,Void> get()
-	// {
-	// return (c, f) -> (null);
-	// }
-	
-	public static void main(String[] args)
-	{
-		Catcher<IOException> swallower = (e) -> System.out.println(e.getMessage());
-		Catcher<NumberFormatException> swallow2 = (e) -> System.out
-			.println("nfeeee " + e.getMessage());
-		Catcher<IllegalArgumentException> swallow3 = (e) -> System.out
-			.println("illegal " + e.getMessage());
-		Catcher<IOException> c = Catcher.of(IOException.class, swallower)
-			.andThen(Catcher.of(NumberFormatException.class, swallow2))
-			.andThen(Catcher.of(IllegalArgumentException.class, swallow3))
-			.andThen(f -> System.out.println("Got to alternative!"));
-		c.accept(new IOException("this is io exception"));
-		c.accept(new Exception("this is exception"));
-		c.accept(new SocketException("this is socket exception"));
-		c.accept(new NumberFormatException("this is number format exception"));
-		c.accept(new IllegalArgumentException("this is illegal argument exception"));
+		return andThen(Catcher.of(cls, cons));
 	}
 }

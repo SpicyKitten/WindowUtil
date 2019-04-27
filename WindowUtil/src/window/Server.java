@@ -66,7 +66,7 @@ public class Server
 				}
 			}, Catcher
 				.of(SocketException.class, (e) -> System.out.println("Server dead: Socket closed."))
-				.andThen((e) -> System.out.println("Server dead: " + e.getMessage()))));
+				.andThen(Catcher.of((e) -> System.out.println("Server dead: " + e.getMessage())))));
 			serverThread.setDaemon(daemon);
 			serverThread.start();
 			System.out.println("Server up and running!");
