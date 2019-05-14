@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import throwing.Catcher;
 import throwing.Throwing;
+import throwing.ThrowingRunnable;
 
 /**
  * A class defining a server communicating with an AutoHotKey process on
@@ -51,7 +52,7 @@ public class Server
 			@SuppressWarnings( "resource" ) // closed when the VM shuts down
 			var s = new ServerSocket(PORT, 0, InetAddress.getByName("localhost"));
 			Runtime.getRuntime().addShutdownHook(new Thread(Throwing.of(s::close)));
-			var serverThread = new Thread(Throwing.of(() ->
+			var serverThread = new Thread(ThrowingRunnable.of(() ->
 			{
 				while(true)
 				{
