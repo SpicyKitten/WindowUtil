@@ -12,19 +12,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
+
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.GDI32;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HBITMAP;
 import com.sun.jna.platform.win32.WinDef.HDC;
+import com.sun.jna.platform.win32.WinDef.HKL;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.BITMAPINFO;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.platform.win32.WinUser;
 import com.sun.jna.platform.win32.WinUser.WINDOWPLACEMENT;
-import window.WinDefExtra.HKL;
 
 /**
  * Provides helpful window and screen image capture utilities
@@ -115,7 +116,7 @@ public class WinUtil
 	{
 		if (window == null)
 			return null;
-		return U32X.GetKeyboardLayout(getThread(window));
+		return U32.GetKeyboardLayout(getThread(window));
 	}
 	
 	/**
@@ -143,7 +144,7 @@ public class WinUtil
 			return null;
 		for (int i = 0; i < chars.length; ++i)
 		{
-			codes[i] = U32X.VkKeyScanExA((byte)chars[i], localeIdentifier);
+			codes[i] = U32.VkKeyScanExA((byte)chars[i], localeIdentifier);
 		}
 		return codes;
 	}
