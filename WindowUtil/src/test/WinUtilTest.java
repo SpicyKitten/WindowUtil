@@ -1,9 +1,9 @@
 package test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
@@ -35,8 +35,8 @@ class WinUtilTest
 			Collection<?> elems = WinUtil.getWindows(
 				"This is a window with a really long title", SearchType.START);
 			assertNotNull(elems);
-			assertEquals("There should be one window with the given title!", 1,
-				elems.size());
+			assertEquals(1,
+				elems.size(), "There should be one window with the given title!");
 		}
 		frame.setVisible(false);
 	}
@@ -107,14 +107,13 @@ class WinUtilTest
 				Rectangle bounds = WinUtil.getBounds(h);
 				double scaleFactor = (double)bounds.width / (double)i;
 				// rounding error <= 0.01
-				assertEquals("This is a window with a " + i + "x" + j
-					+ " internal size and width " + i, i * scaleFactor, bounds.width,
-					0.01);
-				// rounding and multiplying, so 5% error allowed
-				assertEquals(
+				assertEquals(i * scaleFactor, bounds.width, 0.01,
 					"This is a window with a " + i + "x" + j
-						+ " internal size and height " + j,
-					j * scaleFactor, bounds.height, j * scaleFactor * 0.05);
+					+ " internal size and width " + i);
+				// rounding and multiplying, so 5% error allowed
+				assertEquals(j * scaleFactor, bounds.height, j * scaleFactor * 0.05,
+					"This is a window with a " + i + "x" + j
+					+ " internal size and height " + j);
 				frames.add(frame);
 			}
 		}
@@ -136,7 +135,7 @@ class WinUtilTest
 		frame.setVisible(true);
 		HWND h = WinUtil.getWindow("This is a window with a red pixel", SearchType.START);
 		int rgb = WinUtil.getPixel(h, 0, 0);
-		assertEquals("Pixel should be red!", 255 << 16, rgb & 0xffffff);
+		assertEquals(255 << 16, rgb & 0xffffff, "Pixel should be red!");
 		frame.setVisible(false);
 	}
 	
@@ -162,8 +161,8 @@ class WinUtilTest
 		{
 			for (int j = 0; j < rgb.getHeight(); ++j)
 			{
-				assertEquals("Pixel should be green!", 255 << 8,
-					rgb.getRGB(i, j) & 0xffffff);
+				assertEquals(255 << 8,
+					rgb.getRGB(i, j) & 0xffffff, "Pixel should be green!");
 			}
 		}
 		frame.setVisible(false);
